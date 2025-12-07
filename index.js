@@ -23,6 +23,11 @@ const client = new Client({
 });
 
 // -----------------------------
+// ดึง Role ID จาก .env
+// -----------------------------
+const ALLOW_ROLE_ID = process.env.ALLOW_ROLE_ID;
+
+// -----------------------------
 // ลงทะเบียนคำสั่ง /คิวงาน
 // -----------------------------
 const commands = [
@@ -82,6 +87,7 @@ client.on("ready", () => {
 // ดักคำสั่ง + ปุ่ม
 // -----------------------------
 client.on("interactionCreate", async interaction => {
+    
     // -----------------------------
     // ใช้คำสั่ง /คิวงาน
     // -----------------------------
@@ -149,6 +155,13 @@ client.on("interactionCreate", async interaction => {
     // ปุ่มเปลี่ยนสถานะ: รอดำเนินการ
     // -----------------------------
     if (interaction.isButton() && interaction.customId === "status_pending") {
+
+        if (!interaction.member.roles.cache.has(ALLOW_ROLE_ID))
+            return interaction.reply({
+                content: "❌ คุณไม่มีสิทธิ์กดปุ่มนี้",
+                ephemeral: true
+            });
+
         const old = interaction.message.embeds[0];
         if (!old)
             return interaction.reply({
@@ -175,6 +188,13 @@ client.on("interactionCreate", async interaction => {
     // ปุ่มเปลี่ยนสถานะ: งานเสร็จสิ้น
     // -----------------------------
     if (interaction.isButton() && interaction.customId === "status_done") {
+
+        if (!interaction.member.roles.cache.has(ALLOW_ROLE_ID))
+            return interaction.reply({
+                content: "❌ คุณไม่มีสิทธิ์กดปุ่มนี้",
+                ephemeral: true
+            });
+
         const old = interaction.message.embeds[0];
         if (!old)
             return interaction.reply({
