@@ -23,9 +23,11 @@ const client = new Client({
 });
 
 // -----------------------------
-// ดึง Role ID จาก .env
+// ดึงตัวแปรจาก .env
 // -----------------------------
 const ALLOW_ROLE_ID = process.env.ALLOW_ROLE_ID;
+const MOVE_CHANNEL_ID = process.env.MOVE_CHANNEL_ID;
+
 
 // -----------------------------
 // ลงทะเบียนคำสั่ง /คิวงาน
@@ -35,7 +37,9 @@ const commands = [
         .setName("คิวงาน")
         .setDescription("สร้างรายการคิวงานใหม่")
         .addStringOption(o =>
-            o.setName("งาน").setDescription("ชื่องาน").setRequired(true)
+            o.setName("งาน")
+                .setDescription("ชื่องาน")
+                .setRequired(true)
         )
         .addStringOption(o =>
             o.setName("สถานะ")
@@ -58,7 +62,6 @@ const commands = [
         )
 ].map(cmd => cmd.toJSON());
 
-// โหลดคำสั่งเข้าดิสคอร์ด
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 (async () => {
@@ -76,116 +79,81 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
     }
 })();
 
+
 // -----------------------------
-// ระบบบอทเริ่มทำงาน
+// Bot Ready
 // -----------------------------
 client.on("ready", () => {
     console.log(`Bot Online เป็น ${client.user.tag}`);
 });
 
+
 // -----------------------------
-// ดักคำสั่ง + ปุ่ม
+// ดัก Interaction
 // -----------------------------
 client.on("interactionCreate", async interaction => {
-    
+
     // -----------------------------
-    // ใช้คำสั่ง /คิวงาน
+    // /คิวงาน
     // -----------------------------
-    if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === "คิวงาน") {
-            if (!interaction.member.permissions.has("Administrator"))
-                return interaction.reply({
-                    content: "❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้",
-                    ephemeral: true
-                });
+    if (interaction.isChatInputCommand() && interaction.commandName === "คิวงาน") {
 
-            const job = interaction.options.getString("งาน");
-            const status = interaction.options.getString("สถานะ");
-            const customer = interaction.options.getUser("ลูกค้า");
-            const workRoom = interaction.options.getChannel("ห้องงาน");
-
-            const TARGET_CHANNEL_ID = "1442891619496886382";
-
-            const statusText =
-                status === "pending"
-                    ? "⚙️ รอดำเนินการ"
-                    : "✅ งานเสร็จสิ้น";
-
-            const color =
-                status === "pending" ? 0xff0000 : 0x00FF00;
-
-            const embed = new EmbedBuilder()
-                .setColor(color)
-                .setTitle(`📋 คิวงานใหม่: ${job}`)
-                .addFields(
-                    { name: "สถานะ:", value: statusText, inline: true },
-                    { name: "ลูกค้า:", value: `${customer}`, inline: true },
-                    { name: "ห้องสั่งงาน:", value: `${workRoom}`, inline: true },
-                    { name: "รายการสินค้า", value: job },
-                    { name: "ID ลูกค้า", value: customer.id }
-                )
-                .setThumbnail(customer.displayAvatarURL({ size: 512 }))
-                .setFooter({ text: "ระบบคิวงาน - D3X ARTWORK" })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("status_pending")
-                    .setLabel("รอดำเนินการ")
-                    .setStyle(ButtonStyle.Danger),
-
-                new ButtonBuilder()
-                    .setCustomId("status_done")
-                    .setLabel("งานเสร็จสิ้น")
-                    .setStyle(ButtonStyle.Success)
-            );
-
-            const msg = await client.channels.cache
-                .get(TARGET_CHANNEL_ID)
-                .send({ embeds: [embed], components: [row] });
-
+        if (!interaction.member.permissions.has("Administrator"))
             return interaction.reply({
-                content: `สร้างคิวงานสำเร็จ! (Message ID: ${msg.id})`,
-                ephemeral: true
-            });
-        }
-    }
-
-    // -----------------------------
-    // ปุ่มเปลี่ยนสถานะ: รอดำเนินการ
-    // -----------------------------
-    if (interaction.isButton() && interaction.customId === "status_pending") {
-
-        if (!interaction.member.roles.cache.has(ALLOW_ROLE_ID))
-            return interaction.reply({
-                content: "❌ คุณไม่มีสิทธิ์กดปุ่มนี้",
+                content: "❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้",
                 ephemeral: true
             });
 
-        const old = interaction.message.embeds[0];
-        if (!old)
-            return interaction.reply({
-                content: "ไม่พบ embed",
-                ephemeral: true
-            });
+        const job = interaction.options.getString("งาน");
+        const status = interaction.options.getString("สถานะ");
+        const customer = interaction.options.getUser("ลูกค้า");
+        const workRoom = interaction.options.getChannel("ห้องงาน");
 
-        const edited = EmbedBuilder.from(old)
-            .setColor(0xff0000)
-            .spliceFields(0, 1, {
-                name: "สถานะ:",
-                value: "⚙️ รอดำเนินการ",
-                inline: true
-            });
+        const TARGET_CHANNEL_ID = "1442891619496886382"; // ห้องที่โพสต์คิวงาน
 
-        await interaction.message.edit({ embeds: [edited] });
+        const statusText =
+            status === "pending"
+                ? "⚙️ รอดำเนินการ"
+                : "✅ งานเสร็จสิ้น";
+
+        const color =
+            status === "pending" ? 0xff0000 : 0x00FF00;
+
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setTitle(`📋 คิวงานใหม่: ${job}`)
+            .addFields(
+                { name: "สถานะ:", value: statusText, inline: true },
+                { name: "ลูกค้า:", value: `${customer}`, inline: true },
+                { name: "ห้องสั่งงาน:", value: `${workRoom}`, inline: true },
+                { name: "รายการสินค้า", value: job },
+                { name: "ID ลูกค้า", value: customer.id }
+            )
+            .setThumbnail(customer.displayAvatarURL({ size: 512 }))
+            .setFooter({ text: "ระบบคิวงาน - D3X ARTWORK" })
+            .setTimestamp();
+
+        // ปุ่มเหลือแค่ งานเสร็จสิ้น
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("status_done")
+                .setLabel("งานเสร็จสิ้น")
+                .setStyle(ButtonStyle.Success)
+        );
+
+        const msg = await client.channels.cache
+            .get(TARGET_CHANNEL_ID)
+            .send({ embeds: [embed], components: [row] });
+
         return interaction.reply({
-            content: "อัปเดตเป็น **รอดำเนินการ** ✔",
+            content: `สร้างคิวงานสำเร็จ! (Message ID: ${msg.id})`,
             ephemeral: true
         });
     }
 
+
     // -----------------------------
-    // ปุ่มเปลี่ยนสถานะ: งานเสร็จสิ้น
+    // ปุ่ม: งานเสร็จสิ้น → ย้ายห้อง + ลบข้อความเก่า
     // -----------------------------
     if (interaction.isButton() && interaction.customId === "status_done") {
 
@@ -202,6 +170,7 @@ client.on("interactionCreate", async interaction => {
                 ephemeral: true
             });
 
+        // อัปเดตสถานะ
         const edited = EmbedBuilder.from(old)
             .setColor(0x00FF00)
             .spliceFields(0, 1, {
@@ -210,12 +179,21 @@ client.on("interactionCreate", async interaction => {
                 inline: true
             });
 
-        await interaction.message.edit({ embeds: [edited] });
+        // ส่งไปห้องปลายทางที่กำหนดใน .env
+        const targetChannel = client.channels.cache.get(MOVE_CHANNEL_ID);
+        if (targetChannel) {
+            await targetChannel.send({ embeds: [edited] });
+        }
+
+        // ลบข้อความเก่า
+        await interaction.message.delete().catch(() => {});
+
         return interaction.reply({
-            content: "อัปเดตเป็น **งานเสร็จสิ้น** ✅",
+            content: "📌 งานเสร็จสิ้น! ข้อความถูกย้ายและลบเรียบร้อยแล้ว",
             ephemeral: true
         });
     }
+
 });
 
 client.login(process.env.TOKEN);
